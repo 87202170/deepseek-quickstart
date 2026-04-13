@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>现代五子棋</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        h1 {
+            font-size: 2.8rem;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+        .game-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 3rem;
+            max-width: 1200px;
+            width: 100%;
+        }
+        .board-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        canvas {
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            background: #1c1917;
+            display: block;
+        }
+        .controls {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn {
+            padding: 0.9rem 1.8rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #334155, #475569);
+            color: #f1f5f9;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        .btn:active { transform: translateY(0); }
+        .btn-restart { background: linear-gradient(135deg, #059669, #10b981); }
+        .btn-undo { background: linear-gradient(135deg, #7c3aed, #8b5cf6); }
+        .info-panel {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 16px;
+            padding: 2rem;
+            min-width: 280px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            border: 1px solid #475569;
+        }
+        .info-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #cbd5e1;
+            text-align: center;
+        }
+        .status {
+            background: rgba(15, 23, 42, 0.8);
+            padding: 1.2rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            border-left: 5px solid #60a5fa;
+        }
+        .status-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+        .player {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 0.8rem;
+            border-radius: 10px;
+            background: rgba(51, 65, 85, 0.5);
+        }
+        .player-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            margin-right: 1rem;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.5);
+        }
+        .player-black .player-icon { background: radial-gradient(circle at 30% 30%, #666, #000); }
+        .player-white .player-icon { background: radial-gradient(circle at 30% 30%, #fff, #ccc); }
+        .player.active { background: rgba(37, 99, 235, 0.3); border: 1px solid #60a5fa; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            padding: 3rem;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid #475569;
+            animation: modalAppear 0.4s ease-out;
+        }
+        @keyframes modalAppear {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .modal h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #f8fafc;
+        }
+        .modal p {
+            font-size: 1.2rem;
+            color: #cbd5e1;
+            margin-bottom: 2rem;
+        }
+        .modal-btn {
+            padding: 1rem 2.5rem;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .modal-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.4);
+        }
+        .stone {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            box-shadow: 
+                inset 0 -8px 15px rgba(0,0,0,0.4),
+                inset 0 8px 15px rgba(255,255,255,0.1),
+                0 10px 20px rgba(0,0,0,0.5);
+        }
+        .stone-black {
+            background: radial-gradient(circle at 30% 30%, #444, #000);
+        }
+        .stone-white {
+            background: radial-gradient(circle at 30% 30%, #fff, #aaa);
+        }
+        @media (max-width: 768px) {
+            .game-container { flex-direction: column; align-items: center; }
+            .info-panel { width: 100%; max-width: 500px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>五子棋 · Gomoku</h1>
+        <p class="subtitle">深色极简 · 人机对战</p>
+    </div>
+    <div class="game-container">
+        <div class="board-section">
+            <canvas id="boardCanvas" width="600" height="600"></canvas>
+            <div class="controls">
+                <button class="btn btn-restart" id="restartBtn">重新开始</button>
+                <button class="btn btn-undo" id="undoBtn">悔棋</button>
+            </div>
+        </div>
+        <div class="info-panel">
+            <h2 class="info-title">游戏信息</h2>
+            <div class="status">
+                <div class="status-text" id="statusText">黑方回合</div>
+            </div>
+            <div class="player player-black active" id="playerBlack">
+                <div class="player-icon"></div>
+                <div>
+                    <div class="player-name">玩家 (黑棋)</div>
+                    <div class="player-desc">先手</div>
+                </div>
+            </div>
+            <div class="player player-white" id="playerWhite">
+                <div class="player-icon"></div>
+                <div>
+                    <div class="player-name">AI (白棋)</div>
+                    <div class="player-desc">后手</div>
+                </div>
+            </div>
+            <div style="margin-top: 2rem; color: #94a3b8; font-size: 0.9rem; line-height: 1.5;">
+                <p>规则：在横、竖、斜方向先连成五子者胜。</p>
+                <p>提示：点击棋盘交叉点落子，AI会自动回应。</p>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="winModal">
+        <div class="modal-content">
+            <h2 id="winTitle">胜利！</h2>
+            <p id="winMessage">黑方获得胜利！</p>
+            <button class="modal-btn" id="modalRestartBtn">再来一局</button>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('boardCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('statusText');
+        const playerBlack = document.getElementById('playerBlack');
+        const playerWhite = document.getElementById('playerWhite');
+        const restartBtn = document.getElementById('restartBtn');
+        const undoBtn = document.getElementById('undoBtn');
+        const winModal = document.getElementById('winModal');
+        const winTitle = document.getElementById('winTitle');
+        const winMessage = document.getElementById('winMessage');
+        const modalRestartBtn = document.getElementById('modalRestartBtn');
+
+        const BOARD_SIZE = 15;
+        const CELL_SIZE = canvas.width / (BOARD_SIZE + 1);
+        const STONE_RADIUS = CELL_SIZE * 0.42;
+        let board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(0));
+        let currentPlayer = 1;
+        let gameOver = false;
+        let moveHistory = [];
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#3c2a1e');
+            gradient.addColorStop(1, '#5d4037');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                const pos = (i + 1) * CELL_SIZE;
+                ctx.beginPath();
+                ctx.moveTo(CELL_SIZE, pos);
+                ctx.lineTo(canvas.width - CELL_SIZE, pos);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(pos, CELL_SIZE);
+                ctx.lineTo(pos, canvas.height - CELL_SIZE);
+                ctx.stroke();
+            }
+            const dots = [3, 7, 11];
+            ctx.fillStyle = '#000';
+            dots.forEach(x => dots.forEach(y => {
+                ctx.beginPath();
+                ctx.arc((x + 1) * CELL_SIZE, (y + 1) * CELL_SIZE, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }));
+        }
+
+        function drawStone(x, y, player) {
+            const px = (x + 1) * CELL_SIZE;
+            const py = (y + 1) * CELL_SIZE;
+            const gradient = ctx.createRadialGradient(px - 5, py - 5, 1, px, py, STONE_RADIUS);
+            if (player === 1) {
+                gradient.addColorStop(0, '#666');
+                gradient.addColorStop(1, '#000');
+            } else {
+                gradient.addColorStop(0, '#fff');
+                gradient.addColorStop(1, '#aaa');
+            }
+            ctx.beginPath();
+            ctx.arc(px, py, STONE_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            ctx.strokeStyle = player === 1 ? '#333' : '#888';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        function updateStatus() {
+            statusText.textContent = gameOver ? '游戏结束' : (currentPlayer === 1 ? '黑方回合' : '白方回合');
+            playerBlack.classList.toggle('active', currentPlayer === 1 && !gameOver);
+            playerWhite.classList.toggle('active', currentPlayer === 2 && !gameOver);
+        }
+
+        function checkWin(x, y, player) {
+            const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+            for (let [dx, dy] of dirs) {
+                let count = 1;
+                for (let step = 1; step < 5; step++) {
+                    const nx = x + dx * step, ny = y + dy * step;
+                    if (nx < 0 || nx >= BOARD_SIZE || ny < 0 || ny >= BOARD_SIZE || board[ny][nx] !== player) break;
+                    count++;
+                }
+                for (let step = 1; step < 5; step++) {
+                    const nx = x - dx * step, ny = y - dy * step;
+                    if (nx < 0 || nx >= BOARD_SIZE || ny < 0 || ny >= BOARD_SIZE || board[ny][nx] !== player) break;
+                    count++;
+                }
+                if (count >= 5) return true;
+            }
+            return false;
+        }
+
+        function aiMove() {
+            if (gameOver) return;
+            let emptyCells = [];
+            for (let y = 0; y < BOARD_SIZE; y++) {
+                for (let x = 0; x < BOARD_SIZE; x++) {
+                    if (board[y][x] === 0) emptyCells.push({x, y});
+                }
+            }
+            if (emptyCells.length === 0) return;
+            const move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            placeStone(move.x, move.y, 2);
+        }
+
+        function placeStone(x, y, player) {
+            if (board[y][x] !== 0 || gameOver) return false;
+            board[y][x] = player;
+            moveHistory.push({x, y, player});
+            drawStone(x, y, player);
+            if (checkWin(x, y, player)) {
+                gameOver = true;
+                showWinModal(player);
+            } else if (moveHistory.length === BOARD_SIZE * BOARD_SIZE) {
+                gameOver = true;
+                showWinModal(0);
+            } else {
+                currentPlayer = player === 1 ? 2 : 1;
+            }
+            updateStatus();
+            return true;
+        }
+
+        function showWinModal(winner) {
+            if (winner === 1) {
+                winTitle.textContent = '恭喜获胜！';
+                winMessage.textContent = '玩家（黑棋）取得胜利！';
+            } else if (winner === 2) {
+                winTitle.textContent = 'AI 获胜';
+                winMessage.textContent = 'AI（白棋）取得胜利！';
+            } else {
+                winTitle.textContent = '平局';
+                winMessage.textContent = '棋盘已满，双方平手！';
+            }
+            winModal.style.display = 'flex';
+        }
+
+        function handleCanvasClick(e) {
+            if (currentPlayer !== 1 || gameOver) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.round((e.clientX - rect.left) / CELL_SIZE) - 1;
+            const y = Math.round((e.clientY - rect.top) / CELL_SIZE) - 1;
+            if (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE) {
+                if (placeStone(x, y, 1)) {
+                    setTimeout(aiMove, 500);
+                }
+            }
+        }
+
+        function undoMove() {
+            if (moveHistory.length === 0 || gameOver) return;
+            const lastMove = moveHistory.pop();
+            board[lastMove.y][lastMove.x] = 0;
+            drawBoard();
+            moveHistory.forEach(m => drawStone(m.x, m.y, m.player));
+            currentPlayer = lastMove.player;
+            gameOver = false;
+            updateStatus();
+        }
+
+        function restartGame() {
+            board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(0));
+            moveHistory = [];
+            currentPlayer = 1;
+            gameOver = false;
+            drawBoard();
+            updateStatus();
+            winModal.style.display = 'none';
+        }
+
+        canvas.addEventListener('click', handleCanvasClick);
+        restartBtn.addEventListener('click', restartGame);
+        undoBtn.addEventListener('click', undoMove);
+        modalRestartBtn.addEventListener('click', () => {
+            winModal.style.display = 'none';
+            restartGame();
+        });
+
+        drawBoard();
+        updateStatus();
+    </script>
+</body>
+</html>
